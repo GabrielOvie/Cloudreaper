@@ -6,7 +6,7 @@
 [![Python](https://img.shields.io/badge/Python-3.8+-blue.svg)](https://www.python.org/)
 ![CI](https://github.com/GabrielOvie/Cloudreaper/actions/workflows/ci.yml/badge.svg)
 
-> **The first open-source framework that treats cloud cost policies as infrastructure code — enabling startups to implement enterprise-grade FinOps without hiring dedicated teams.**
+> **The first open-source framework that treats cloud cost policies as infrastructure code enabling startups to implement enterprise-grade FinOps without hiring dedicated teams.**
 
 ---
 
