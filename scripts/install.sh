@@ -33,7 +33,7 @@ EOF
     echo -e "${NC}"
 }
 
-# Logging function
+# Logging functions
 log() {
     echo -e "${GREEN}[$(date +'%Y-%m-%d %H:%M:%S')] $1${NC}"
 }
@@ -56,7 +56,6 @@ command_exists() {
     command -v "$1" >/dev/null 2>&1
 }
 
-# Check system requirements
 # Check system requirements
 check_requirements() {
     log "Checking system requirements..."
@@ -99,59 +98,67 @@ check_requirements() {
     fi
 }
 
-
 # Install Python dependencies
 install_python_deps() {
     log "Installing Python dependencies..."
-    
+
     # Create virtual environment if it doesn't exist
     if [ ! -d "venv" ]; then
-        info "Creating Python virtual environment..."
-        python3 -m venv venv
+        info "Creating Python 3.8 virtual environment..."
+        $PYTHON_BIN -m venv venv
     fi
-    
+
     # Activate virtual environment
+    # shellcheck disable=SC1091
     source venv/bin/activate
-    
+
     # Upgrade pip
     pip install --upgrade pip
-    
+
     # Install requirements
     if [ -f "requirements.txt" ]; then
         pip install -r requirements.txt
     else
         # Install core dependencies if requirements.txt doesn't exist
         info "Installing core dependencies..."
-        pip install ansible>=6.0.0 boto3 botocore jinja2 PyYAML
+        pip install "ansible>=6.0.0" boto3 botocore jinja2 PyYAML
     fi
-    
+
     info "✓ Python dependencies installed"
 }
 
-# Install Ansible collections
+# Install Ansible collections with retry
 install_ansible_collections() {
     log "Installing Ansible collections..."
-    
+
     # Activate virtual environment
+    # shellcheck disable=SC1091
     source venv/bin/activate
-    
-    # Install required Ansible collections
-    if [ -f "requirements.yml" ]; then
-        ansible-galaxy install -r requirements.yml
-    else
-        # Install core collections
-        ansible-galaxy collection install amazon.aws
-        ansible-galaxy collection install community.aws
-        ansible-galaxy collection install ansible.posix
-    fi
-    
+
+    declare -a collections=("amazon.aws" "community.aws" "ansible.posix")
+
+    for col in "${collections[@]}"; do
+        info "Installing collection: $col"
+        for i in {1..3}; do
+            if ansible-galaxy collection install "$col"; then
+                break
+            else
+                warn "Failed to install $col (attempt $i), retrying in 3 seconds..."
+                sleep 3
+            fi
+            if [ "$i" -eq 3 ]; then
+                warn "Giving up on $col after 3 attempts."
+            fi
+        done
+    done
+
     info "✓ Ansible collections installed"
 }
 
 # Setup AWS configuration
 setup_aws_config() {
     log "Setting up AWS configuration..."
-    
+
     if [ ! -f "$HOME/.aws/credentials" ] && [ ! -f "$HOME/.aws/config" ]; then
         warn "AWS credentials not found."
         echo
@@ -180,25 +187,24 @@ setup_aws_config() {
 # Create directory structure
 create_directories() {
     log "Creating directory structure..."
-    
-    # Create required directories
+
     mkdir -p reports
     mkdir -p logs
     mkdir -p vault
     mkdir -p backup
-    
-    # Set appropriate permissions
+
     chmod 700 vault  # Secure vault directory
-    
+
     info "✓ Directory structure created"
 }
 
 # Setup configuration files
 setup_config() {
     log "Setting up configuration files..."
-    
+
     # Create ansible.cfg if it doesn't exist
     if [ ! -f "ansible/ansible.cfg" ]; then
+        mkdir -p ansible
         cat > ansible/ansible.cfg << EOF
 [defaults]
 inventory = inventory/
@@ -217,7 +223,7 @@ ssh_args = -o ControlMaster=auto -o ControlPersist=60s
 EOF
         info "✓ Created ansible.cfg"
     fi
-    
+
     # Create basic inventory if it doesn't exist
     if [ ! -f "ansible/inventory/aws_ec2.yml" ]; then
         mkdir -p ansible/inventory
@@ -244,8 +250,8 @@ EOF
 # Setup demo environment
 setup_demo() {
     log "Setting up demo environment..."
-    
-    # Create demo script
+
+    mkdir -p scripts
     cat > scripts/demo.sh << 'EOF'
 #!/bin/bash
 
@@ -267,7 +273,7 @@ echo "   1. Review the generated HTML report"
 echo "   2. Customize policies in policies/ directory"
 echo "   3. Run resource cleanup (dry-run): ansible-playbook ansible/playbooks/resource-cleanup.yml --check"
 EOF
-    
+
     chmod +x scripts/demo.sh
     info "✓ Demo script created"
 }
@@ -275,24 +281,25 @@ EOF
 # Verify installation
 verify_installation() {
     log "Verifying installation..."
-    
+
     # Activate virtual environment
+    # shellcheck disable=SC1091
     source venv/bin/activate
-    
+
     # Test Ansible
     if ansible --version > /dev/null 2>&1; then
         info "✓ Ansible is working"
     else
         error "Ansible installation failed"
     fi
-    
+
     # Test AWS connectivity (if credentials are configured)
     if ansible localhost -m amazon.aws.aws_caller_info > /dev/null 2>&1; then
         info "✓ AWS connectivity verified"
     else
         warn "Could not verify AWS connectivity. Please check your credentials."
     fi
-    
+
     # Test playbook syntax
     if [ -f "ansible/playbooks/cost-audit.yml" ]; then
         if ansible-playbook ansible/playbooks/cost-audit.yml --syntax-check > /dev/null 2>&1; then
@@ -332,9 +339,9 @@ print_success() {
 # Main installation function
 main() {
     print_banner
-    
+
     log "Starting CloudReaper installation..."
-    
+
     # Run installation steps
     check_requirements
     install_python_deps
@@ -344,7 +351,7 @@ main() {
     setup_aws_config
     setup_demo
     verify_installation
-    
+
     print_success
 }
 
@@ -384,5 +391,3 @@ case "${1:-}" in
         main
         ;;
 esac
-
-
