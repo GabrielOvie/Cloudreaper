@@ -1,0 +1,283 @@
+# CloudReaper Policy Template: Lean Startup
+# Optimized for bootstrapped startups with limited budgets
+# Target: Keep monthly AWS costs under £200
+
+policy_metadata:
+  name: "lean-startup"
+  version: "1.0"
+  description: "Aggressive cost optimization for resource-constrained startups"
+  target_monthly_budget: 200  # £200/month
+  recommended_for:
+    - "Pre-revenue startups"
+    - "MVP development teams"
+    - "Bootstrapped companies"
+    - "Developer side projects"
+
+# Core cost control rules
+cost_controls:
+  # EC2 Instance Management
+  ec2_instances:
+    # Development instances should be stopped outside work hours
+    development_shutdown:
+      enabled: true
+      schedule:
+        weekdays: "19:00-09:00"  # Stop 7PM-9AM
+        weekends: "all_day"      # Stop all weekend
+      target_tags:
+        - "Environment:dev"
+        - "Environment:development"
+        - "Environment:test"
+      exceptions:
+        # Allow 24/7 for demo environments during key periods
+        - tag_condition: "Purpose:demo"
+          duration_days: 7
+
+    # Idle instance detection (low CPU utilization)
+    idle_detection:
+      enabled: true
+      cpu_threshold: 5          # < 5% CPU for period below
+      monitoring_period_hours: 24
+      action: "stop"
+      exclude_tags:
+        - "AlwaysOn:true"
+        - "Environment:prod"
+
+    # Instance right-sizing recommendations
+    rightsizing:
+      enabled: true
+      utilization_threshold: 20  # Recommend downsize if < 20% utilized
+      monitoring_period_days: 7
+      auto_resize: false         # Manual approval required
+
+  # EBS Volume Management
+  ebs_volumes:
+    # Unattached volume cleanup
+    unattached_cleanup:
+      enabled: true
+      grace_period_days: 3      # Delete after 3 days unattached
+      snapshot_before_delete: true
+      exclude_tags:
+        - "KeepUnattached:true"
+
+    # Volume type optimization
+    type_optimization:
+      enabled: true
+      # Recommend gp3 over gp2 for cost savings
+      preferred_types: ["gp3", "standard"]
+      auto_convert: false       # Manual approval required
+
+    # Snapshot lifecycle management
+    snapshots:
+      retention_days: 30        # Keep snapshots for 30 days
+      automated_cleanup: true
+
+  # S3 Storage Management
+  s3_buckets:
+    # Lifecycle policies for all buckets
+    lifecycle_policies:
+      enabled: true
+      rules:
+        - name: "standard_to_ia"
+          transition_days: 30
+          storage_class: "STANDARD_IA"
+        - name: "ia_to_glacier"
+          transition_days: 90
+          storage_class: "GLACIER"
+        - name: "glacier_to_deep_archive"
+          transition_days: 180
+          storage_class: "DEEP_ARCHIVE"
+        - name: "delete_old_files"
+          expiration_days: 365    # Delete after 1 year
+
+    # Intelligent tiering for unpredictable access patterns
+    intelligent_tiering:
+      enabled: true
+      apply_to_all_buckets: true
+
+  # CloudWatch Logs Management
+  cloudwatch_logs:
+    # Aggressive log retention for cost control
+    default_retention_days: 7   # Very short for startups
+    log_groups:
+      # Different retention for different types
+      application_logs: 14      # App logs: 2 weeks
+      access_logs: 7            # Access logs: 1 week
+      debug_logs: 3             # Debug logs: 3 days
+      error_logs: 30            # Error logs: 1 month (important)
+
+    # Export old logs to S3 before deletion
+    export_before_delete:
+      enabled: true
+      s3_bucket: "startup-log-archive"
+
+  # RDS Database Management
+  rds_instances:
+    # Development database shutdown
+    development_shutdown:
+      enabled: true
+      schedule:
+        weekdays: "20:00-08:00"  # Stop 8PM-8AM
+        weekends: "all_day"
+      target_tags:
+        - "Environment:dev"
+        - "Environment:test"
+
+    # Backup retention optimization
+    backup_retention:
+      development: 1            # 1 day for dev
+      staging: 3                # 3 days for staging
+      production: 7             # 7 days for prod (minimum recommended)
+
+# Budget controls and alerts
+budget_controls:
+  # Multiple alert thresholds
+  billing_alerts:
+    - threshold: 50           # £50 - Early warning
+      type: "email"
+      action: "notify"
+    - threshold: 100          # £100 - Take action
+      type: "email+slack"
+      action: "audit_resources"
+    - threshold: 150          # £150 - Emergency
+      type: "email+slack+sms"
+      action: "stop_non_essential"
+    - threshold: 200          # £200 - Budget limit
+      type: "all_channels"
+      action: "emergency_shutdown"
+
+  # Automated cost controls
+  automated_responses:
+    enabled: true
+    actions:
+      stop_non_essential:
+        - "Stop all dev/test EC2 instances"
+        - "Disable non-essential Lambda functions"
+        - "Pause scheduled tasks"
+      emergency_shutdown:
+        - "Stop all non-production resources"
+        - "Notify team immediately"
+        - "Generate detailed cost report"
+
+# Resource tagging requirements
+tagging_policy:
+  required_tags:
+    - "Environment"           # prod/staging/dev/test
+    - "Owner"                 # Email of responsible person
+    - "Project"               # Project/feature name
+    - "CostCenter"            # For cost allocation
+
+  # Auto-tag resources without proper tags
+  auto_tagging:
+    enabled: true
+    default_values:
+      Environment: "untagged"
+      Owner: "unknown"
+      CostCenter: "general"
+
+# Monitoring and reporting
+monitoring:
+  # Daily cost tracking
+  daily_reports:
+    enabled: true
+    recipients: ["team@startup.com"]
+    include_forecasts: true
+
+  # Weekly deep-dive analysis
+  weekly_analysis:
+    enabled: true
+    include_recommendations: true
+    include_trend_analysis: true
+
+  # Real-time anomaly detection
+  anomaly_detection:
+    enabled: true
+    threshold_percentage: 20  # Alert if 20% above normal
+    baseline_days: 7
+
+# Compliance and safety
+safety_controls:
+  # Never automatically delete production resources
+  production_protection:
+    enabled: true
+    protected_tags:
+      - "Environment:prod"
+      - "Environment:production"
+      - "Critical:true"
+
+  # Require approval for destructive actions
+  approval_required:
+    - "delete_resources"
+    - "stop_production_instances"
+    - "modify_production_databases"
+
+  # Backup before cleanup
+  backup_policy:
+    create_snapshots: true
+    retention_days: 30
+    verify_backups: true
+
+# Integration settings
+integrations:
+  # Slack notifications
+  slack:
+    webhook_url: "{{ vault_slack_webhook }}"
+    channels:
+      alerts: "#aws-alerts"
+      reports: "#finance"
+
+  # Email notifications
+  email:
+    smtp_server: "{{ vault_smtp_server }}"
+    recipients:
+      - "cto@startup.com"
+      - "finance@startup.com"
+
+  # GitHub integration for audit trails
+  github:
+    repository: "startup/aws-cost-reports"
+    commit_reports: true
+
+# Emergency procedures
+emergency_procedures:
+  # Runaway cost scenario
+  cost_spike_response:
+    immediate_actions:
+      - "Stop all non-essential EC2 instances"
+      - "Disable auto-scaling groups"
+      - "Check for data transfer spikes"
+      - "Review recent deployments"
+
+    investigation_checklist:
+      - "Check CloudTrail for recent API calls"
+      - "Review Cost Explorer for service breakdown"
+      - "Analyze usage patterns in CloudWatch"
+      - "Contact AWS support if needed"
+
+  # Recovery procedures
+  recovery_plan:
+    gradual_restart:
+      - "Restart critical production services first"
+      - "Monitor costs during restart"
+      - "Implement additional monitoring"
+      - "Review and update policies"
+
+# Custom rules for specific startup needs
+custom_startup_rules:
+  # Demo environment management
+  demo_environments:
+    auto_create: false
+    max_instances: 2
+    auto_destroy_after_days: 7
+    require_approval: true
+
+  # Development resource limits
+  development_limits:
+    max_ec2_instances: 5
+    max_rds_instances: 2
+    max_instance_types: ["t3.micro", "t3.small", "t3.medium"]
+
+  # Weekend cost optimization
+  weekend_optimization:
+    aggressive_shutdown: true
+    keep_running_minimum: true
+    auto_restart_monday: true
