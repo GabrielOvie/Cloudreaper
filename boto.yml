@@ -1,0 +1,13 @@
+---
+- hosts: all
+  become: true
+  gather_facts: true
+
+  tasks:
+
+    - name: Boto
+      yum:
+        name:
+          - boto3
+          - botocore
+        state: present

@@ -1,0 +1,21 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>CloudReaper Cost Audit - {{ audit_date }}</title>
+</head>
+<body>
+    <h1>CloudReaper Cost Audit Report</h1>
+    <p><strong>Date:</strong> {{ audit_date }}</p>
+    <p><strong>Region:</strong> {{ aws_region }}</p>
+    <h2>Summary</h2>
+    <ul>
+        <li>EC2 Instances: {{ audit_summary.total_ec2_instances }}</li>
+        <li>EBS Volumes: {{ audit_summary.total_ebs_volumes }}</li>
+        <li>S3 Buckets: {{ audit_summary.total_s3_buckets }}</li>
+        <li>Log Groups: {{ audit_summary.total_log_groups }}</li>
+        <li>Potential Monthly Savings: £{{ audit_summary.potential_monthly_savings }}</li>
+        <li>Potential Annual Savings: £{{ audit_summary.potential_annual_savings }}</li>
+    </ul>
+</body>
+</html>
+

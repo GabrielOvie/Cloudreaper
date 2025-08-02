@@ -1,0 +1,27 @@
+{
+  "audit_date": "{{ audit_date }}",
+  "region": "{{ aws_region }}",
+  "summary": {
+    "total_potential_savings_monthly": {{ grand_total_savings | float | round(2) }},
+    "total_potential_savings_annual": {{ (grand_total_savings | float * 12) | round(2) }},
+    "resources_analyzed": {
+      "ec2_instances": {{ ec2_analysis | length | default(0) }},
+      "ebs_volumes": {{ ebs_analysis | length | default(0) }},
+      "s3_buckets": {{ s3_analysis | length | default(0) }},
+      "log_groups": {{ logs_analysis | length | default(0) }}
+    }
+  },
+  "detailed_analysis": {
+    "ec2_instances": {{ ec2_analysis | default([]) | to_nice_json }},
+    "ebs_volumes": {{ ebs_analysis | default([]) | to_nice_json }},
+    "s3_buckets": {{ s3_analysis | default([]) | to_nice_json }},
+    "cloudwatch_logs": {{ logs_analysis | default([]) | to_nice_json }}
+  },
+  "recommendations": [
+    "Stop non-production EC2 instances during off-hours",
+    "Delete unattached EBS volumes",
+    "Implement S3 lifecycle policies",
+    "Set appropriate CloudWatch logs retention"
+  ]
+}
+

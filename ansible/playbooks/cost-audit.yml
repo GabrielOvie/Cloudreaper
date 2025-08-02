@@ -1,0 +1,238 @@
+---
+# CloudReaper: Main Cost Audit Playbook
+# This playbook performs comprehensive AWS cost analysis and generates actionable reports
+
+- name: CloudReaper Cost Audit
+  hosts: all
+  gather_facts: true
+  vars:
+    # Configuration variables
+    aws_region: "eu-west-2"
+    report_output_dir: "{{ playbook_dir }}/../reports"
+    audit_date: "{{ ansible_date_time.date }}"
+    
+    # Cost thresholds (configurable)
+    ec2_idle_threshold_days: 7
+    ebs_unused_threshold_days: 7
+    s3_lifecycle_threshold_days: 30
+    cloudwatch_logs_retention_days: 30
+    
+    # Estimated cost savings (£ per month)
+    cost_estimates:
+      ec2_stopped_per_instance: 25
+      ebs_unused_per_gb: 0.08
+      s3_lifecycle_per_gb: 0.015
+      cloudwatch_logs_per_gb: 0.50
+
+  tasks:
+    - name: Set default policy file if not already defined
+      set_fact:
+        policy_file: "/home/ec2-user/cloudreaper/policies/templates/lean-startup.yml"
+      when: policy_file is not defined
+
+    - name: Create reports directory
+      file:
+        path: "{{ report_output_dir }}"
+        state: directory
+        mode: '0755'
+
+    - name: Load cost policy configuration
+      include_vars:
+        file: "{{ policy_file }}"
+        name: cost_policy
+      ignore_errors: true
+
+    - name: Display audit start message
+      debug:
+        msg: |
+          🌍 CloudReaper Cost Audit Starting
+          📅 Date: {{ audit_date }}
+          🌐 Region: {{ aws_region }}
+          📋 Policy: {{ policy_file }}
+
+    # EC2 Instance Analysis
+    - name: Gather EC2 instance information
+      amazon.aws.ec2_instance_info:
+        region: "{{ aws_region }}"
+        aws_access_key: "{{ lookup('env', 'AWS_ACCESS_KEY_ID') }}"
+        aws_secret_key: "{{ lookup('env', 'AWS_SECRET_ACCESS_KEY') }}"
+      register: ec2_instances
+
+    - name: Analyze EC2 instances for cost optimization
+      set_fact:
+        ec2_analysis: "{{ ec2_analysis | default([]) + [instance_analysis] }}"
+      vars:
+        instance_analysis:
+          instance_id: "{{ item.instance_id }}"
+          instance_type: "{{ item.instance_type }}"
+          state: "{{ item.state.name }}"
+          launch_time: "{{ item.launch_time }}"
+          tags: "{{ item.tags | default({}) }}"
+          estimated_monthly_cost: "{{ cost_estimates.ec2_stopped_per_instance if item.state.name == 'running' else 0 }}"
+          recommendation: "{{ 'Consider stopping' if item.state.name == 'running' and 'Environment' in item.tags and item.tags.Environment == 'dev' else 'Review usage' }}"
+          potential_savings: "{{ cost_estimates.ec2_stopped_per_instance if item.state.name == 'running' and 'Environment' in item.tags and item.tags.Environment == 'dev' else 0 }}"
+      loop: "{{ ec2_instances.instances }}"
+      when: ec2_instances.instances is defined
+
+    # EBS Volume Analysis
+    - name: Gather EBS volume information
+      amazon.aws.ec2_vol_info:
+        region: "{{ aws_region }}"
+        aws_access_key: "{{ lookup('env', 'AWS_ACCESS_KEY_ID') }}"
+        aws_secret_key: "{{ lookup('env', 'AWS_SECRET_ACCESS_KEY') }}"
+      register: ebs_volumes
+
+  
+    - name: Analyze EBS volumes for cost optimization
+      set_fact:
+        ebs_analysis: "{{ ebs_analysis | default([]) + [volume_analysis] }}"
+      vars:
+        volume_analysis:
+        volume_id: "{{ item.VolumeId | default('N/A') }}"
+        size: "{{ item.Size | default(0) }}"
+        state: "{{ item.State | default('unknown') }}"
+        volume_type: "{{ item.VolumeType | default('N/A') }}"
+        attached_to: "{{ item.Attachments[0].InstanceId if item.Attachments is defined and item.Attachments | length > 0 else 'unattached' }}"
+        tags: "{{ item.Tags | default({}) }}"
+        estimated_monthly_cost: "{{ (item.Size | float) * cost_estimates.ebs_unused_per_gb if item.Size is defined else 0 }}"
+        recommendation: "{{ 'Delete if unused' if item.Attachments is not defined or item.Attachments | length == 0 else 'Review necessity' }}"
+        potential_savings: "{{ (item.Size | float) * cost_estimates.ebs_unused_per_gb if item.Attachments is not defined or item.Attachments | length == 0 else 0 }}"
+      loop: "{{ ebs_volumes.volumes }}"
+      when: ebs_volumes.volumes is defined
+
+
+
+
+
+
+
+    # S3 Bucket Analysis
+    - name: List S3 buckets
+      amazon.aws.s3_bucket_info:
+        region: "{{ aws_region }}"
+        aws_access_key: "{{ lookup('env', 'AWS_ACCESS_KEY_ID') }}"
+        aws_secret_key: "{{ lookup('env', 'AWS_SECRET_ACCESS_KEY') }}"
+      register: s3_buckets
+
+    - name: Analyze S3 buckets for lifecycle policies
+      set_fact:
+        s3_analysis: "{{ s3_analysis | default([]) + [bucket_analysis] }}"
+      vars:
+        bucket_analysis:
+          bucket_name: "{{ item.name }}"
+          region: "{{ item.bucket_location.LocationConstraint | default('us-east-1') }}"
+          has_lifecycle_policy: false  # Would need additional API call to check
+          recommendation: "Implement lifecycle policy"
+          estimated_savings: 50  # Estimated based on typical usage
+      loop: "{{ s3_buckets.buckets }}"
+      when: s3_buckets.buckets is defined
+
+    # CloudWatch Logs Analysis 
+    - name: Initialize logs_analysis
+      set_fact:
+        logs_analysis: []
+      when: logs_analysis is not defined
+
+    - name: Get CloudWatch log groups
+      community.aws.cloudwatchlogs_log_group_info:
+        region: "{{ aws_region }}"
+        aws_access_key: "{{ lookup('env', 'AWS_ACCESS_KEY_ID') }}"
+        aws_secret_key: "{{ lookup('env', 'AWS_SECRET_ACCESS_KEY') }}"
+      register: log_groups
+      ignore_errors: true
+
+    - name: Analyze CloudWatch logs retention
+      set_fact:
+        logs_analysis: "{{ logs_analysis + [log_analysis] }}"
+      vars:
+        log_analysis:
+          log_group_name: "{{ item.logGroupName }}"
+          retention_days: "{{ item.retentionInDays | default('Never expire') }}"
+          stored_bytes: "{{ item.storedBytes | default(0) }}"
+          recommendation: "{{ 'Set retention to ' + cloudwatch_logs_retention_days|string + ' days' if item.retention_in_days is not defined or item.retention_in_days > cloudwatch_logs_retention_days else 'Retention OK' }}"
+          potential_savings: "{{ ((item.storedBytes | default(0)) / 1073741824 * cost_estimates.cloudwatch_logs_per_gb * 0.5) | round(2) if item.retention_in_days is not defined or item.retentionInDays > cloudwatch_logs_retention_days else 0 }}"
+      loop: "{{ log_groups.log_groups | default ([])  }}"
+      when: log_groups.log_groups is defined
+
+    # Calculate total potential savings
+    - name: Ensure all cost analysis variables are lists of dictionaries
+
+      set_fact:
+        ec2_analysis: >-
+          {{ ec2_analysis | default([]) | selectattr('__class__', 'equalto', 'dict') | list }}
+        ebs_analysis: >-
+          {{ ebs_analysis | default([]) | selectattr('__class__', 'equalto', 'dict') | list }}
+        s3_analysis: >-
+          {{ s3_analysis | default([]) | selectattr('__class__', 'equalto', 'dict') | list }}
+        logs_analysis: >-
+          {{ logs_analysis | default([]) | selectattr('__class__', 'equalto', 'dict') | list }}
+
+    
+    
+    
+    
+    
+
+    #
+    - name: Calculate total potential savings
+      set_fact:
+        total_ec2_savings: "{{ ec2_analysis | default([]) | select('defined') | map(attribute='potential_savings') | list | sum }}"
+        total_ebs_savings: "{{ ebs_analysis | default([]) | select('defined') | map(attribute='potential_savings') | list | sum }}"
+        total_s3_savings: "{{ s3_analysis | default([]) | select('defined')  | map(attribute='estimated_savings') | list | sum }}"
+        total_logs_savings: "{{ logs_analysis | default([]) |select('defined') | map(attribute='potential_savings') | list | sum }}"
+
+
+    - name: Calculate grand total savings
+      set_fact:
+        grand_total_savings: "{{ (total_ec2_savings | float) + (total_ebs_savings | float) + (total_s3_savings | float) + (total_logs_savings | float) }}"
+
+    # Generate comprehensive report
+    - name: Generate cost audit report
+      set_fact:
+        audit_summary:
+          total_ec2_instances: "{{ ec2_analysis | length | default(0) }}"
+          total_ebs_volumes: "{{ ebs_analysis | length | default(0) }}"
+          total_s3_buckets: "{{ s3_analysis | length | default(0) }}"
+          total_log_groups: "{{ logs_analysis | length | default(0) }}"
+          potential_monthly_savings: "{{ grand_total_savings | float |  round(2) }}"
+          potential_annual_savings: "{{ (grand_total_savings | float * 12) | round(2) }}"
+
+    - name: Generate cost audit report
+      template:
+        src: "../roles/aws-cost-analyzer/templates/cost-report.html.j2"
+        dest: "{{ report_output_dir }}/cost-audit-{{ audit_date }}.html"
+
+
+    # Generate JSON report for programmatic access
+    - name: Generate JSON report
+      template:
+        src: "../roles/aws-cost-analyzer/templates/cost-audit.json.j2"
+        dest: "{{ report_output_dir }}/cost-audit-{{ audit_date }}.json"
+
+    - name: Display audit results
+      debug:
+        msg: |
+          🎉 CloudReaper Cost Audit Complete!
+          
+          📊 Resources Analyzed:
+          - EC2 Instances: {{ ec2_analysis | length | default(0) }}
+          - EBS Volumes: {{ ebs_analysis | length | default(0) }}
+          - S3 Buckets: {{ s3_analysis | length | default(0) }}
+          - Log Groups: {{ logs_analysis | length | default(0) }}
+          
+          💰 Potential Savings:
+          - Monthly: £{{ grand_total_savings |float | round(2) }}
+          - Annual: £{{ (grand_total_savings | float * 12) | round(2) }}
+          
+          📋 Reports Generated:
+          - HTML: {{ report_output_dir }}/cost-audit-{{ audit_date }}.html
+          - JSON: {{ report_output_dir }}/cost-audit-{{ audit_date }}.json
+          
+          🚀 Next Steps:
+          1. Review the generated reports
+          2. Apply recommended changes using: ansible-playbook resource-cleanup.yml --check
+          3. Monitor savings with regular audits
+
+    - name: Final success message
+      debug:
+        msg: "🌍 CloudReaper has identified £{{ ((total_ec2_savings | float) + (total_ebs_savings | float) + (total_s3_savings | float) + (total_logs_savings | float)) | float  }}/month in potential AWS cost savings!"

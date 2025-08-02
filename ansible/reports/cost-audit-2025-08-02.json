@@ -1,0 +1,27 @@
+{
+  "audit_date": "2025-08-02",
+  "region": "eu-west-2",
+  "summary": {
+    "total_potential_savings_monthly": 0.0,
+    "total_potential_savings_annual": 0.0,
+    "resources_analyzed": {
+      "ec2_instances": 0,
+      "ebs_volumes": 0,
+      "s3_buckets": 0,
+      "log_groups": 0
+    }
+  },
+  "detailed_analysis": {
+    "ec2_instances": [],
+    "ebs_volumes": [],
+    "s3_buckets": [],
+    "cloudwatch_logs": []
+  },
+  "recommendations": [
+    "Stop non-production EC2 instances during off-hours",
+    "Delete unattached EBS volumes",
+    "Implement S3 lifecycle policies",
+    "Set appropriate CloudWatch logs retention"
+  ]
+}
+
