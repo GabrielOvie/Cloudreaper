@@ -294,7 +294,7 @@ This project is licensed under the MIT License — see the [LICENSE](LICENSE) fi
 
 <div align="center">
 
-**Built with ❤️ by the CloudReaper Community**
+**Built with ❤️ by grumpy Gabriel**
 
 [⭐ Star this repo](https://github.com/GabrielOvie/Cloudreaper) • [🔀 Fork it](https://github.com/GabrielOvie/Cloudreaper/fork) • [📢 Share it](https://twitter.com/intent/tweet?text=Check%20out%20CloudReaper%20-%20Infrastructure%20Cost%20Governance%20as%20Code!&url=https://github.com/GabrielOvie/Cloudreaper)
 
