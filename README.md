@@ -204,17 +204,6 @@ custom_rules:
 
 ---
 
-## 🔐 Security
-
-CloudReaper follows **secure defaults**:
-
-* Read-only audit mode by default
-* Ansible Vault for secrets handling
-* Human-in-the-loop enforcement
-* IAM best practices encouraged
-
-To report vulnerabilities, email: **[security@cloudreaper.io](mailto:security@cloudreaper.io)**
-
 ---
 
 ## 🤝 Contributing
@@ -261,11 +250,6 @@ See [CONTRIBUTING.md](CONTRIBUTING.md) for full guidelines.
 
 Join the conversation:
 
-* 💬 [GitHub Discussions](https://github.com/GabrielOvie/Cloudreaper/discussions)
-#* 🐦 [@CloudReaper](https://twitter.com/cloudreaper)
-#* 💼 [LinkedIn Page](https://linkedin.com/company/cloudreaper)
-#* 📻 [YouTube Tutorials](https://youtube.com/@cloudreaper)
-
 ---
 
 ## 📄 License
@@ -288,10 +272,8 @@ This project is licensed under the MIT License — see the [LICENSE](LICENSE) fi
 * 📚 Docs: [`/docs`](./docs/)
 #* 🐛 Bugs: [GitHub Issues](https://github.com/GabrielOvie/Cloudreaper/issues)
 #* 💡 Suggestions: [Discussions](https://github.com/GabrielOvie/Cloudreaper/discussions)
-#* 📧 Commercial Support: **[contact@cloudreaper.io](mailto:contact@cloudreaper.io)**
 
 ---
-
 <div align="center">
 
 **Built with ❤️ by grumpy Gabriel**
