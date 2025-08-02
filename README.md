@@ -1,7 +1,7 @@
 # 🌍 CloudReaper: Infrastructure Cost Governance as Code
 
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
-[![Ansible](https://img.shields.io/badge/Ansible-6.0+-red.svg)](https://www.ansible.com/)
+[![Ansible](https://img.shields.io/badge/Ansible.svg)](https://www.ansible.com/)
 [![AWS](https://img.shields.io/badge/AWS-Compatible-orange.svg)](https://aws.amazon.com/)
 [![Python](https://img.shields.io/badge/Python-3.8+-blue.svg)](https://www.python.org/)
 ![CI](https://github.com/GabrielOvie/Cloudreaper/actions/workflows/ci.yml/badge.svg)
