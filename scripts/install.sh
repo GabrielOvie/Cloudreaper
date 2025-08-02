@@ -57,48 +57,40 @@ command_exists() {
 }
 
 # Check system requirements
+# Check system requirements
 check_requirements() {
     log "Checking system requirements..."
-    
-    # Check Python
-  
-    # Function to check if command exists
-command_exists() {
-    command -v "$1" >/dev/null 2>&1
-}
 
-# Detect python binary (prefer python3.8 if available)
-if command_exists python3.8; then
-    PYTHON_BIN=python3.8
-elif command_exists python3; then
-    PYTHON_BIN=python3
-else
-    echo "[ERROR] Python 3.8+ is required but python3 or python3.8 not found."
-    exit 1
-fi
+    # Detect python binary (prefer python3.8 if available)
+    if command_exists python3.8; then
+        PYTHON_BIN=python3.8
+    elif command_exists python3; then
+        PYTHON_BIN=python3
+    else
+        error "Python 3.8+ is required but python3 or python3.8 not found."
+    fi
 
-# Check Python version
-python_version=$($PYTHON_BIN -c "import sys; print('.'.join(map(str, sys.version_info[:2])))")
-required_version="3.8"
-if [ "$(printf '%s\n' "$required_version" "$python_version" | sort -V | head -n1)" != "$required_version" ]; then
-    echo "[ERROR] Python 3.8+ is required. Found version: $python_version"
-    exit 1
-fi
+    # Check Python version
+    python_version=$($PYTHON_BIN -c "import sys; print('.'.join(map(str, sys.version_info[:2])))")
+    required_version="3.8"
+    if [ "$(printf '%s\n' "$required_version" "$python_version" | sort -V | head -n1)" != "$required_version" ]; then
+        error "Python 3.8+ is required. Found version: $python_version"
+    fi
 
-echo "✓ Python $python_version detected at $PYTHON_BIN"
+    info "✓ Python $python_version detected at $PYTHON_BIN"
 
     # Check pip
     if ! command_exists pip3; then
         error "pip3 is required but not installed."
     fi
     info "✓ pip3 detected"
-    
+
     # Check Git
     if ! command_exists git; then
         error "Git is required but not installed."
     fi
     info "✓ Git detected"
-    
+
     # Check AWS CLI (optional but recommended)
     if command_exists aws; then
         info "✓ AWS CLI detected"
@@ -106,6 +98,7 @@ echo "✓ Python $python_version detected at $PYTHON_BIN"
         warn "AWS CLI not found. It's recommended for easier AWS configuration."
     fi
 }
+
 
 # Install Python dependencies
 install_python_deps() {
@@ -391,4 +384,5 @@ case "${1:-}" in
         main
         ;;
 esac
+
 
