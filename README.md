@@ -133,7 +133,8 @@ rules:
 ### One-Line Install
 
 ```bash
-curl -sSL https://raw.githubusercontent.com/GabrielOvie/Cloudreaper/main/scripts/install.sh | bash
+curl -sSL https://raw.githubusercontent.com/GabrielOvie/Cloudreaper/main/scripts/install.sh | tr -d '\r' | bash
+
 ```
 
 ### Manual Install
